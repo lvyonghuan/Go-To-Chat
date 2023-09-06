@@ -1,10 +1,20 @@
 package service
 
 import (
+	"bytes"
+	"errors"
+	"io"
 	"log"
+	"mime/multipart"
+	"net/http"
 
 	"github.com/gorilla/websocket"
 	jsoniter "github.com/json-iterator/go"
+)
+
+const (
+	textMessage = iota
+	fileMessage
 )
 
 // 接收消息模型
@@ -19,6 +29,8 @@ type receive struct {
 	MessageType int `json:"message_type"`
 	//消息内容
 	Message string `json:"message"`
+	//文件名
+	FileName string `json:"file_name"`
 
 	//内部消息
 	//消息发送时间
@@ -67,8 +79,16 @@ func handelMessage(messageType int, message []byte) {
 		//核对序列号
 		receive.checkNumber()
 		//TODO：云端存储（并发执行？）
+		switch receive.MessageType {
+		case textMessage:
 
-		//TODO：频道广播
+		case fileMessage:
+			err := storeFile(receive.Message, receive.FileName)
+			if err != nil {
+				//TODO:反馈错误
+			}
+		}
+
 		go receive.sendMessage()
 	}
 }
@@ -90,4 +110,51 @@ func (m *receive) checkNumber() {
 	r.mu.Lock()
 	r.counter++
 	r.mu.Unlock()
+}
+
+// 向存储服务器发送文件
+func storeFile(file, fileName string) error {
+	//将file与filename加入到form-data中
+	body := new(bytes.Buffer)
+	writer := multipart.NewWriter(body)
+
+	writer.WriteField("file", file)
+	writer.WriteField("fileName", fileName)
+	writer.Close()
+
+	req, err := http.NewRequest("POST", "http://localhost:8081/storeFile", body)
+	if err != nil {
+		log.Println("创建请求失败:", err)
+		return err
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("发送请求失败:", err)
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	respData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	var response responseMessage
+	json := jsoniter.ConfigCompatibleWithStandardLibrary
+	err = json.Unmarshal(respData, &response)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	if response.Code != 200 {
+		log.Println(response.Message)
+		return errors.New(response.Message)
+	}
+
+	return nil
 }

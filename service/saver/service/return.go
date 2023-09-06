@@ -17,10 +17,3 @@ func respError(c *gin.Context, code int, msg error) {
 		"msg":  msg.Error(),
 	})
 }
-
-// 返回信息
-type responseMessage struct {
-	Code    int         `json:"code"`
-	Info    interface{} `json:"info"`
-	Message string      `json:"message"`
-}
