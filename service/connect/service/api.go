@@ -10,6 +10,7 @@ func InitRouter() {
 	r.GET("/login", login)
 
 	r.POST("/addFriend", checkToken(), addFriend)
+	r.DELETE("/deleteFriend", checkToken(), deleteFriend)
 
 	//建立ws连接
 	r.GET("/ws/:id", checkToken(), connect) //懒得想了，一个房间的id为两个id的拼接字符串。低位在前高位拼后。

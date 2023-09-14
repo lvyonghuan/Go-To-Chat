@@ -68,6 +68,12 @@ func addFriendInDB(friend Friend) (Friend, error) {
 	return friend, err
 }
 
+// 删除好友
+func deleteFriendInDB(friend Friend) error {
+	err := db.Delete(&friend).Error
+	return err
+}
+
 // 获取用户名
 func getUsername(uid string) (string, error) {
 	id, err := strconv.Atoi(uid)

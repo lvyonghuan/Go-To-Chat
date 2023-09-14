@@ -72,7 +72,7 @@ func addFriend(c *gin.Context) {
 		return
 	}
 
-	//获取id
+	//获取username
 	usernameA, err := getUsername(idA)
 	if err != nil {
 		respError(c, 500, err)
@@ -102,6 +102,58 @@ func addFriend(c *gin.Context) {
 	}
 
 	respOK(c, friend)
+}
+
+func deleteFriend(c *gin.Context) {
+	//鉴权
+	uid, isExist := c.Get("user_id")
+	if !isExist {
+		respError(c, 401, errors.New("token无效"))
+		return
+	}
+
+	//获取好友id
+	friendUID := c.PostForm("friend_id")
+	if friendUID == uid {
+		respError(c, 401, errors.New("不能添加自己为好友"))
+		return
+	}
+
+	//比较id大小
+	idA, idB, err := compareID(uid.(string), friendUID)
+	if err != nil {
+		respError(c, 500, err)
+		return
+	}
+
+	//获取username
+	usernameA, err := getUsername(idA)
+	if err != nil {
+		respError(c, 500, err)
+		return
+	}
+	usernameB, err := getUsername(idB)
+	if err != nil {
+		respError(c, 500, err)
+		return
+	}
+
+	friend := Friend{
+		Id:        idA + idB,
+		UidA:      uid.(string),
+		UidB:      friendUID,
+		UsernameA: usernameA,
+		UsernameB: usernameB,
+		Agree:     0,
+		Counter:   0,
+	}
+	err = deleteFriendInDB(friend)
+	if err != nil {
+		respError(c, 500, err)
+		return
+	}
+
+	respOK(c, nil)
 }
 
 //生成用户token
